@@ -1,68 +1,105 @@
-"""
-sentinel_daemon.py - The Python User-Space Controller
-"""
-
+#BPF tool access (BPF Compiler Collection) - push data to the kernel
 from bcc import BPF
+#timestamps
 import time
+#opens the auth log
 import os
+#regex - find failed passwd
 import re
+# convert ip to binary
 import socket
+#c conversions
 import struct
 
-# --- CONTRACT CONFIG ---
-INTERFACE = "eth0"  # Verify with 'ip link'
+INTERFACE = "wlp2s0"
 LOG_FILE = "/var/log/auth.log"
-THRESHOLD = 5       # Max failures before ban
-WINDOW = 300        # Seconds to track failures
+THRESHOLD = 5
+WINDOW = 300
 
-# 1. Load the Kernel Contract
-b = BPF(src_file="sentinel_kern.c")
-fn = b.load_func("xdp_sentinel", BPF.XDP)
-b.attach_xdp(INTERFACE, fn, 0)
+#compile NIC_Guard into bytecode
+try:
+    b = BPF(src_file="NIC_Guard.c")
+    fn = b.load_func("xdp_sentinel", BPF.XDP)
 
-# 2. Access the Shared Map
+#try to attach to the wifi driver
+    try: 
+        b.attach_xdp(INTERFACE, fn, 0)
+    except:
+        print(f"XDP not supported on {INTERFACE}. Moving to generic mode...")
+        b.attach_xdp(INTERFACE, fn, BPF.XDP_FLAGS_SKB_MODE)
+
+#exit if program wont load
+except Exception as e:
+    print(f"Failed to load BPF program: {e}")
+    exit(1)
+
+#access the blacklist
 blacklist = b.get_table("blacklist")
+#initialize a dictionary to track attempts
 failed_attempts = {}
 
-def ban_attacker(ip_str):
-    """Updates the kernel-space map with a new blacklisted IP."""
-    # Convert dotted-string IP to Network Byte Order integer
-    ip_int = struct.unpack("I", socket.inet_aton(ip_str))[0]
-    
-    # Push to Kernel (Key: IP integer, Value: Timestamp)
-    blacklist[struct.pack("I", ip_int)] = b.u64(int(time.time()))
-    
-    print(f"[!] SENTINEL: Host {ip_str} neutralized at NIC level.")
-    with open("/var/log/sentinel_bans.log", "a") as f:
-        f.write(f"{time.ctime()}: {ip_str} BANNED\n")
+#Update hash map with blacklisted IP and log the action
+def blacklist_attacker(ip_string):
+    try:
+        #convert IP to 32 bit unsigned integer(BE), grab 1st item
+        ip_convert = struct.unpack("I", socket.inet_aton(ip_string))[0]
 
-def run_sentinel():
-    print(f"Sentinel-XDP Operational on {INTERFACE}. Monitoring {LOG_FILE}...")
-    with open(LOG_FILE, "r") as f:
-        f.seek(0, os.SEEK_END)
+        #push to kernel (key(IP converted), val(timestamp))
+        blacklist[struct.pack("I", ip_convert)] = b.u64(int(time.time()))
+        print(f"Sentinel: Host {ip_string} stopped at the NIC.")
+
+        #append to designated log for attempt blocking
+        with open("/var/log/NIC_Guard_Bans.log", "a") as block_log:
+            #timestamp: address
+            block_log.write(f"{time.ctime()}: {ip_string} BLACKLISTED!!!\n"
+    except Exception as e:
+        print(f"Error blacklisting {ip_string}: {e}")
+
+def run_ssh_guard():
+    print(f"SSH Guard Operational on {INTERFACE}")
+    print(f"Monitoring {LOG_FILE} for any brute force attempts..."
+
+    #Look in the auth log
+    with open(LOG_FILE, "r") as read_log:
+        #check end of log
+        read_log.seek(0, os.SEEK_END)
+        
+        #persistent polling the log
         while True:
-            line = f.readline()
+            line = read_log.readline()
             if not line:
                 time.sleep(0.1)
                 continue
-
-            match = re.search(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)", line)
+            
+            #look for passwd failures
+            pass_match = re.search(r"Failed password for .* from (\d+\d+\.\d+\.\d+)", line
             if match:
                 ip = match.group(1)
-                now = time.time()
+                timestamp = time.time()
+
+                #set up and update failure history
                 failed_attempts.setdefault(ip, [])
-                failed_attempts[ip].append(now)
+                failed_attempts[ip].append(timestamp)
+
+                #filter out attempts past time window(300 secs)
+                #look at every time, calculate and check if within the window
+                failed_attempts[ip] = [t for t in failed_attempts[ip] if timestamp - t < WINDOW]
                 
-                # Filter old attempts
-                failed_attempts[ip] = [t for t in failed_attempts[ip] if now - t < WINDOW]
-
+                #keep track of failed attempts every time one occurs
+                print(f"Detected SSH failure from {ip} ({len(failed_attempts[ip])}/{THRESHOLD})")
+                
+                #once attempts == 5, add to blacklist
                 if len(failed_attempts[ip]) >= THRESHOLD:
-                    ban_attacker(ip)
+                    blacklist_attacker(ip)
 
+#ensure script is modular
 if __name__ == "__main__":
     try:
-        run_sentinel()
+        run_ssh_guard()
+    #graceful exit(on ctrl c)
     except KeyboardInterrupt:
-        print("\nDetaching from NIC and shutting down...")
+        print("\nSSH_Guard detaching from NIC and shutting down")
+
     finally:
-        b.remove_xdp(INTERFACE, 0)
+    #graceful cleanup
+    b.remove_xdp(INTERFACE, 0)
