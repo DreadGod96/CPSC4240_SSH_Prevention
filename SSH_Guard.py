@@ -19,7 +19,7 @@ WINDOW = 300
 
 #compile NIC_Guard into bytecode
 try:
-    b = BPF(src_file="NIC_Guard.c")
+    b = BPF(src_file="/home/emonro2/CPSC4240_SSH_Prevention/NIC_Guard.c")
     fn = b.load_func("xdp_sentinel", BPF.XDP)
 
 #try to attach to the wifi driver
