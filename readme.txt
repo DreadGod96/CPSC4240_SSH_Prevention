@@ -15,13 +15,19 @@ XDP - Express Data Path
 
 [Unit]
 Description=Sentinel-XDP Intrusion Prevention Service
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/python3 /home/ubuntu/SSH_Guard.py
-WorkingDirectory=/home/ubuntu/
+Type=simple
+ExecStart=/usr/bin/python3 -u /home/emonro2/CPSC4240_SSH_Prevention/SSH_Guard.py
+WorkingDirectory=/home/emonro2/CPSC4240_SSH_Prevention/
+StandardOutput=journal
+StandardError=journal
 Restart=always
+RestartSec=5
 User=root
+Group=root
 
 [Install]
 WantedBy=multi-user.target
