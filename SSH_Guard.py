@@ -72,7 +72,7 @@ def run_ssh_guard():
                 continue
             
             #look for passwd failures
-            pass_match = re.search(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)", line
+            pass_match = re.search(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)", line)
             if pass_match:
                 ip = pass_match.group(1)
                 timestamp = time.time()
@@ -102,4 +102,4 @@ if __name__ == "__main__":
 
     finally:
     #graceful cleanup
-    b.remove_xdp(INTERFACE, 0)
+        b.remove_xdp(INTERFACE, 0)
