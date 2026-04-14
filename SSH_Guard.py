@@ -73,8 +73,8 @@ def run_ssh_guard():
             
             #look for passwd failures
             pass_match = re.search(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)", line
-            if match:
-                ip = match.group(1)
+            if pass_match:
+                ip = pass_match.group(1)
                 timestamp = time.time()
 
                 #set up and update failure history
