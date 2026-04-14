@@ -83,3 +83,5 @@ sudo pkill -f SSH_Guard.py
 Check if it auto reboots:
 sudo systemctl status SSH_Guard
 
+Erase ban log:
+sudo truncate -s 0 /var/log/NIC_Guard_Bans.log
