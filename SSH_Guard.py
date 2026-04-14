@@ -1,3 +1,4 @@
+import ctypes
 #BPF tool access (BPF Compiler Collection) - push data to the kernel
 from bcc import BPF
 #timestamps
@@ -43,9 +44,13 @@ def blacklist_attacker(ip_string):
     try:
         #convert IP to 32 bit unsigned integer(BE), grab 1st item
         ip_convert = struct.unpack("I", socket.inet_aton(ip_string))[0]
-
+        
         #push to kernel (key(IP converted), val(timestamp))
-        blacklist[struct.pack("I", ip_convert)] = b.u64(int(time.time()))
+        key = ctypes.c_uint32(ip_convert)
+        val = ctypes.c_uint64(int(time.time()))
+
+        blacklist[key] = val
+
         print(f"Sentinel: Host {ip_string} stopped at the NIC.")
 
         #append to designated log for attempt blocking
