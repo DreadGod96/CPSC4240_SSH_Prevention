@@ -51,13 +51,13 @@ def blacklist_attacker(ip_string):
         #append to designated log for attempt blocking
         with open("/var/log/NIC_Guard_Bans.log", "a") as block_log:
             #timestamp: address
-            block_log.write(f"{time.ctime()}: {ip_string} BLACKLISTED!!!\n"
+            block_log.write(f"{time.ctime()}: {ip_string} BLACKLISTED!!!\n")
     except Exception as e:
         print(f"Error blacklisting {ip_string}: {e}")
 
 def run_ssh_guard():
     print(f"SSH Guard Operational on {INTERFACE}")
-    print(f"Monitoring {LOG_FILE} for any brute force attempts..."
+    print(f"Monitoring {LOG_FILE} for any brute force attempts...")
 
     #Look in the auth log
     with open(LOG_FILE, "r") as read_log:
@@ -72,7 +72,7 @@ def run_ssh_guard():
                 continue
             
             #look for passwd failures
-            pass_match = re.search(r"Failed password for .* from (\d+\d+\.\d+\.\d+)", line
+            pass_match = re.search(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)", line
             if match:
                 ip = match.group(1)
                 timestamp = time.time()
