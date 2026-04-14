@@ -52,4 +52,34 @@ Inside the file, look at the ExecStart and WorkingDirectory lines. They must poi
 To verify it is working:
 
 sudo systemctl status SSH_Guard
+
 sudo journalctl -u SSH_Guard -f
+
+
+
+Key commands:
+
+verify NIC hook:
+ip link show wlp2s0
+
+confirm sentinel existence:
+sudo bpftool prog show name xdp_sentinel
+
+view blacklist:
+sudo bpftool map dump name blacklist
+
+check ban log file:
+cat /var/log/NIC_Guard_Bans.log
+
+check auth log:
+tail -f /var/log/auth.log
+
+Nuclear reset:
+sudo systemctl restart SSH_Guard
+
+Persistence test:
+sudo pkill -f SSH_Guard.py
+
+Check if it auto reboots:
+sudo systemctl status SSH_Guard
+
