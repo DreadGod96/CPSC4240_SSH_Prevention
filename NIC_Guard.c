@@ -1,7 +1,9 @@
-#include <linux/bpf.h> //eBPF(extended Berkley Packet Filter) subsystem; kernel-mode interaction
+//#include <linux/bpf.h> //eBPF(extended Berkley Packet Filter) subsystem; kernel-mode interaction
 #include <linux/if_ether.h> //Layer 2 interactions
 #include <linux/ip.h> //Layer 3 interactions
 #include <linux/in.h> //IP definitions for byte order conversion
+
+#include <uapi/linux/bpf.h>
 
 //Hash map to store blacklist (map, IPv4 address, timestamp)
 BPF_HASH(blacklist, u32, u64);
@@ -16,7 +18,7 @@ int xdp_sentinel(struct xdp_md *context) {
     //Boundary check for layer 2: eBPF verifies its within memory
     //Prevents kernel crash, if packet header doesnt match
     //Read header as ethernet MAC (destination, source, protocol)
-    struct etthdr *ether = data;
+    struct ethhdr *ether = data_start;
     //check address after, where IP header begins
     if ((void*)(ether + 1) > data_end) {
         //return safe, proceed to next check
